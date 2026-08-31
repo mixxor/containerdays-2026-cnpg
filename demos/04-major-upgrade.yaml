@@ -1,0 +1,6 @@
+# Demo 4 — in-place major upgrade PG 17 -> 18. Same OS family (trixie) is required.
+# Operator stops the cluster, runs pg_upgrade --link in `<primary>-major-upgrade`,
+# then re-clones the replicas. PG 18 preserves optimizer stats; extended statistics
+# are NOT preserved, so still ANALYZE. Every base backup is still PG 17 - take a new one.
+spec:
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.6-minimal-trixie

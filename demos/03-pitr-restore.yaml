@@ -1,0 +1,29 @@
+# Demo 3 — PITR into a NEW cluster after an `UPDATE` with no `WHERE`.
+# Set targetTime below to a timestamp captured BEFORE the bad UPDATE.
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: hafen-restored
+  namespace: hafen
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11-minimal-trixie
+
+  bootstrap:
+    recovery:
+      source: hafen-source
+      recoveryTarget:
+        targetTime: "2026-08-30 18:51:15.574189+00"   # <- set this before applying
+
+  externalClusters:
+  - name: hafen-source
+    plugin:
+      name: barman-cloud.cloudnative-pg.io
+      parameters:
+        barmanObjectName: hafen-store
+        serverName: hafen   # the source cluster's prefix in the bucket
+
+  storage:
+    size: 2Gi
+

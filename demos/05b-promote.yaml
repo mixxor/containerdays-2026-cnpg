@@ -1,0 +1,4 @@
+# Demo 5b — promote the DR cluster. One field.
+spec:
+  replica:
+    enabled: false

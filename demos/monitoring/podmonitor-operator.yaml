@@ -1,0 +1,18 @@
+# Operator metrics (:8080). Instance metrics are handled by the Cluster's own
+# spec.monitoring.enablePodMonitor, which makes the operator manage that PodMonitor.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: cnpg-operator
+  namespace: cnpg-system
+  labels:
+    release: kps
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cloudnative-pg
+  podMetricsEndpoints:
+  - port: metrics
+    path: /metrics
+    interval: 15s

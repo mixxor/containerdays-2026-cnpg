@@ -1,0 +1,17 @@
+# Demo 1b — PgBouncer in front of the primary. CNPG manages the Deployment + Service.
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: hafen-pooler-rw
+  namespace: hafen
+spec:
+  cluster:
+    name: hafen
+  instances: 2
+  type: rw                    # rw = primary; ro = read-only replicas
+  pgbouncer:
+    poolMode: transaction
+    parameters:
+      max_client_conn: "1000"
+      default_pool_size: "25"

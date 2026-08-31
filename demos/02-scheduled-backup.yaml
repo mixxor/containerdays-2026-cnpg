@@ -1,0 +1,30 @@
+# Demo 2c — one on-demand Backup + a nightly ScheduledBackup, both via the plugin.
+---
+# A Backup CR runs ONCE, the moment it is created. This is the one that fires now.
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: hafen-backup-initial
+  namespace: hafen
+spec:
+  cluster:
+    name: hafen
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+---
+# A ScheduledBackup is a cron. It does NOT run on apply unless immediate: true.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: hafen-nightly
+  namespace: hafen
+spec:
+  schedule: "0 0 2 * * *"   # 6-field cron: sec min hour dom mon dow
+  immediate: false          # true = also take one right now, at creation
+  cluster:
+    name: hafen
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

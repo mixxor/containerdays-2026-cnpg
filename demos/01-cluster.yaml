@@ -1,0 +1,60 @@
+# Demo 1 — 3-node PG 17 cluster "hafen". 1 primary + 2 async streaming replicas.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hafen
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: hafen
+  namespace: hafen
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11-minimal-trixie
+
+  bootstrap:
+    initdb:
+      database: hafen
+      owner: hafenmeister
+      postInitApplicationSQLRefs:
+        configMapRefs:
+        - name: hafen-schema
+          key: schema.sql
+
+  storage:
+    size: 2Gi
+
+  postgresql:
+    parameters:
+      shared_buffers: "256MB"        # demo value = 50% of the pod limit, not a prod ratio
+
+  resources:
+    requests: { cpu: "100m", memory: "256Mi" }
+    limits:   { cpu: "1",    memory: "512Mi" }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hafen-schema
+  namespace: hafen
+data:
+  schema.sql: |
+    -- Runs as the postgres superuser; without SET ROLE the table ends up owned
+    -- by postgres and hafenmeister can't DROP it (demo 3).
+    SET ROLE hafenmeister;
+
+    CREATE TABLE containers (
+      id        bigserial PRIMARY KEY,
+      iso_code  text UNIQUE NOT NULL,
+      ship      text NOT NULL,
+      cargo     text NOT NULL,
+      weight_kg int NOT NULL CHECK (weight_kg > 0 AND weight_kg <= 44000)
+    );
+
+    INSERT INTO containers (iso_code, ship, cargo, weight_kg) VALUES
+      ('MSCU1234567', 'Klaus Stoertebeker', 'Elbtower-Fassade, Rest',    43999),
+      ('HLCU7654321', 'Goedeke Michels',    'U5-Tunnelbohrer, ETA 2040', 41250),
+      ('MAEU0000001', 'Cap San Diego',      'Astra Bier',                38400),
+      ('MSCU1112223', 'MS Bleichen',        'Franzbroetchen',            17200);

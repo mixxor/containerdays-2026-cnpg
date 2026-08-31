@@ -1,0 +1,14 @@
+# Demo 4b — a PG 17 base backup cannot bootstrap a PG 18 cluster.
+# Demo 5 recovers from this bucket, so take a fresh base backup after the upgrade.
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: hafen-backup-pg18
+  namespace: hafen
+spec:
+  cluster:
+    name: hafen
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

@@ -1,0 +1,73 @@
+# Demo 5 — DR replica cluster from the same bucket. Continuous WAL replay.
+# Promote with: patch spec.replica.enabled=false
+# Needs its own Secret + ObjectStore: cross-namespace refs are not supported.
+#
+# DELIBERATELY INCOMPLETE, and it is the point of the closing beat in the talk:
+# there is no `spec.plugins` here. externalClusters is enough to bootstrap and to
+# replay WAL, so this works perfectly as a standby. The moment you promote it in
+# 05b, you have a primary that archives no WAL and takes no backups.
+#
+# If you add `spec.plugins` to fix that, do NOT reuse serverName: hafen with this
+# same destinationPath. The promoted cluster starts its own timeline and would
+# write into the old production's prefix. Give it its own serverName (or its own
+# path) before it ever becomes a primary.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hafen-dr
+---
+# DR namespace also needs the credentials + ObjectStore (cross-namespace ref is not supported).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-creds-for-cnpg
+  namespace: hafen-dr
+type: Opaque
+stringData:
+  ACCESS_KEY_ID:     hafenmeister
+  ACCESS_SECRET_KEY: schuppen52rules
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: hafen-store
+  namespace: hafen-dr
+spec:
+  configuration:
+    destinationPath: s3://hafen-backups/
+    endpointURL: http://seaweedfs.seaweedfs.svc:9000
+    s3Credentials:
+      accessKeyId:     { name: s3-creds-for-cnpg, key: ACCESS_KEY_ID }
+      secretAccessKey: { name: s3-creds-for-cnpg, key: ACCESS_SECRET_KEY }
+    wal:  { compression: gzip }
+    data: { compression: gzip }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: hafen-dr
+  namespace: hafen-dr
+spec:
+  instances: 2
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.6-minimal-trixie
+
+  replica:
+    enabled: true
+    source: hafen-source
+
+  bootstrap:
+    recovery:
+      source: hafen-source
+
+  externalClusters:
+  - name: hafen-source
+    plugin:
+      name: barman-cloud.cloudnative-pg.io
+      parameters:
+        barmanObjectName: hafen-store
+        serverName: hafen
+
+  storage:
+    size: 2Gi
+

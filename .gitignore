@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+._*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Kubernetes / cluster credentials
+kubeconfig
+*.kubeconfig
+.kube/
+*.pem
+*.key
+*.crt
+
+# Recording scratch
+*.cast.tmp
+rec/out/
+
+# Misc
+*.log
+*.bak
+*.orig
+*.tmp
+__pycache__/
+*.py[cod]

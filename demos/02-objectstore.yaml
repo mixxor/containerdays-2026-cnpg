@@ -1,0 +1,36 @@
+# Demo 2a — ObjectStore CR: where the barman-cloud sidecar pushes base backups + WAL.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-creds-for-cnpg
+  namespace: hafen
+type: Opaque
+stringData:
+  ACCESS_KEY_ID:     hafenmeister
+  ACCESS_SECRET_KEY: schuppen52rules
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: hafen-store
+  namespace: hafen
+spec:
+  configuration:
+    destinationPath: s3://hafen-backups/
+    endpointURL: http://seaweedfs.seaweedfs.svc:9000      # in-cluster SeaweedFS; swap to real AWS S3 in prod
+    s3Credentials:
+      accessKeyId:
+        name: s3-creds-for-cnpg
+        key:  ACCESS_KEY_ID
+      secretAccessKey:
+        name: s3-creds-for-cnpg
+        key:  ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+      maxParallel: 4        # parallel WAL fetch on restore
+    data:
+      compression: gzip
+      jobs: 2
+  # retention lives here, NOT on ScheduledBackup (strict decode error there)
+  retentionPolicy: "7d"
