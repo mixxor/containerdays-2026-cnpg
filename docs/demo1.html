@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo 1: Deploy — CloudNativePG Day 2</title>
+<meta name="description" content="One Cluster CR: 3 instances, streaming replication, a PgBouncer Pooler in front.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/asciinema-player@3.17.0/dist/bundle/asciinema-player.css">
+<style>
+:root { --teal:#03FFE0; --ink:#0B0B0B; --dim:#8b9296; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--ink); color:#e9edee;
+  font:15px/1.55 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+header { border-bottom:1px solid #23282a; padding-bottom:14px; margin-bottom:22px; }
+.kicker { color:var(--dim); font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
+h1 { font-size:26px; margin:.35rem 0 .3rem; font-weight:700; }
+h1 .no { color:var(--teal); }
+p.lede { color:#b3bbbe; margin:.2rem 0 0; max-width:70ch; }
+a { color:var(--teal); }
+a:hover { text-decoration:underline; }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px;
+  background:#17191a; border:1px solid #23282a; border-radius:5px; padding:2px 6px; }
+nav.demos { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 22px; }
+nav.demos a { display:inline-block; padding:5px 11px; border:1px solid #2b3134; border-radius:999px;
+  text-decoration:none; color:#cfd5d7; font-size:13px; }
+nav.demos a:hover { border-color:var(--teal); color:var(--teal); text-decoration:none; }
+nav.demos a[aria-current] { background:var(--teal); border-color:var(--teal); color:var(--ink); font-weight:600; }
+.player { border-left:4px solid var(--teal); border-radius:11px; overflow:hidden; background:#121314; }
+h2 { font-size:14px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);
+  margin:30px 0 10px; font-weight:600; }
+ol.beats { margin:0; padding-left:0; list-style:none; columns:2; column-gap:34px; }
+ol.beats li { break-inside:avoid; margin:0 0 5px; font-size:13.5px; color:#c3cacd; }
+ol.beats b { color:var(--teal); font-weight:600; font-variant-numeric:tabular-nums;
+  margin-right:9px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; }
+footer { margin-top:34px; padding-top:14px; border-top:1px solid #23282a; color:var(--dim); font-size:13px; }
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:18px; }
+.card { border:1px solid #23282a; border-radius:12px; overflow:hidden; background:#121314;
+  text-decoration:none; color:inherit; display:block; }
+.card:hover { border-color:var(--teal); text-decoration:none; }
+.card img { width:100%; display:block; border-bottom:1px solid #23282a; }
+.card .body { padding:12px 14px 15px; }
+.card .body b { display:block; font-size:15px; margin-bottom:3px; }
+.card .body span { color:#9aa2a5; font-size:13px; }
+@media (max-width:760px) { ol.beats { columns:1; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="kicker">Running PostgreSQL on Kubernetes &middot; Day 2 Operations with CloudNativePG</div>
+  <h1><span class="no">Demo 1</span> — Deploy</h1>
+  <p class="lede">One Cluster CR: 3 instances, streaming replication, a PgBouncer Pooler in front.</p>
+</header>
+<nav class="demos">
+<a href="index.html">All demos</a>
+<a href="demo1.html" aria-current="page">1 &middot; Deploy</a>
+<a href="demo2.html">2 &middot; ObjectStore + Backup</a>
+<a href="demo3.html">3 &middot; Point-in-Time Recovery</a>
+<a href="demo4.html">4 &middot; In-Place Major Upgrade, 17 → 18</a>
+<a href="demo5.html">5 &middot; Replica Cluster for DR</a>
+</nav>
+<div class="player" id="player"></div>
+<h2>Beats</h2>
+<ol class="beats">
+<li><b>0:03</b>01-cluster.yaml on screen</li>
+<li><b>0:10</b>01-cluster.yaml on screen</li>
+<li><b>0:15</b>Operator schedules 3 pods, picks a primary, bootstraps strea</li>
+<li><b>0:30</b>Pooler CR = managed PgBouncer Deployment + Service. No Helm </li>
+<li><b>0:34</b>01b-pooler.yaml on screen</li>
+<li><b>0:47</b>Connect through the pooler, not the database. Transaction-mo</li>
+</ol>
+<h2>Replay it locally</h2>
+<p><code>asciinema play -i 2 demos/demo1.cast</code> &nbsp;&middot;&nbsp;
+   <a href="casts/demo1.cast" download>download the cast</a></p>
+<footer>ContainerDays Hamburg 2026 &middot; Michael Raeck &middot; <a href="https://github.com/mixxor/containerdays-2026-cnpg">source on GitHub</a> &middot; <a href="https://github.com/mixxor/containerdays-2026-cnpg/blob/main/slides/cnpg-day2-operations-containerdays-2026.pdf">slides (PDF)</a></footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/asciinema-player@3.17.0/dist/bundle/asciinema-player.min.js"></script>
+<script>
+  AsciinemaPlayer.create('casts/demo1.cast', document.getElementById('player'), {
+    cols: 120, rows: 32, idleTimeLimit: 2, speed: 1.15,
+    terminalLineHeight: 1.05, fit: 'width', poster: 'npt:0:02',
+    markers: [[3.64, "01-cluster.yaml on screen"], [10.02, "01-cluster.yaml on screen"], [15.41, "Operator schedules 3 pods, picks a primary, bootstraps strea"], [30.34, "Pooler CR = managed PgBouncer Deployment + Service. No Helm "], [34.27, "01b-pooler.yaml on screen"], [47.07, "Connect through the pooler, not the database. Transaction-mo"]],
+    theme: 'asciinema',
+  })
+</script>
+</body>
+</html>

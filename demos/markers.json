@@ -1,0 +1,176 @@
+{
+  "demo1": [
+    [
+      3.64,
+      "01-cluster.yaml on screen"
+    ],
+    [
+      10.02,
+      "01-cluster.yaml on screen"
+    ],
+    [
+      15.41,
+      "Operator schedules 3 pods, picks a primary, bootstraps strea"
+    ],
+    [
+      30.34,
+      "Pooler CR = managed PgBouncer Deployment + Service. No Helm "
+    ],
+    [
+      34.27,
+      "01b-pooler.yaml on screen"
+    ],
+    [
+      47.07,
+      "Connect through the pooler, not the database. Transaction-mo"
+    ]
+  ],
+  "demo2": [
+    [
+      5.82,
+      "Credentials + ObjectStore CR: where base backups + WAL go."
+    ],
+    [
+      10.28,
+      "02-objectstore.yaml on screen"
+    ],
+    [
+      13.97,
+      "Wire the cluster to the plugin. isWALArchiver: true -> plugi"
+    ],
+    [
+      18.7,
+      "02-cluster-patch.yaml on screen"
+    ],
+    [
+      23.59,
+      "Rolling restart: watch the barman-cloud sidecar appear in ea"
+    ],
+    [
+      45.11,
+      "2/2 \u2014 the sidecar is a native (init) container next to postg"
+    ],
+    [
+      56.57,
+      "Two CRs. Backup runs once on creation. ScheduledBackup is a "
+    ],
+    [
+      61.89,
+      "02-scheduled-backup.yaml on screen"
+    ],
+    [
+      69.98,
+      "Fire it. The sidecar runs barman-cloud-backup."
+    ],
+    [
+      88.29,
+      "The ObjectStore reports the window you actually have, not th"
+    ],
+    [
+      95.68,
+      "Base backup + WAL are in S3 (SeaweedFS). This is what PITR +"
+    ]
+  ],
+  "demo3": [
+    [
+      17.98,
+      "Capture a pre-disaster timestamp T0."
+    ],
+    [
+      24.32,
+      "One UPDATE. Correcting a weight."
+    ],
+    [
+      31.55,
+      "Check."
+    ],
+    [
+      39.05,
+      "Oh no!!  ...  Anyway. Lets recreate."
+    ],
+    [
+      40.71,
+      "Make sure the WAL with our disaster history is flushed to th"
+    ],
+    [
+      53.29,
+      "New Cluster CR: bootstrap.recovery from the ObjectStore, tar"
+    ],
+    [
+      61.84,
+      "03-pitr-restore.yaml on screen"
+    ],
+    [
+      65.51,
+      "Restore reads the base backup, replays WAL up to T0, stops."
+    ],
+    [
+      76.52,
+      "The real weights are back - in the RESTORED cluster. Product"
+    ],
+    [
+      86.58,
+      "Recovery is not finished until production is fixed. The tabl"
+    ],
+    [
+      106.07,
+      "Production is whole again. THIS is what the restore was for."
+    ]
+  ],
+  "demo4": [
+    [
+      4.96,
+      "One field. imageName 17 -> 18."
+    ],
+    [
+      8.19,
+      "04-major-upgrade.yaml on screen"
+    ],
+    [
+      13.21,
+      "Operator shuts the cluster down and runs pg_upgrade --link i"
+    ],
+    [
+      27.36,
+      "Replica PVCs are deleted + re-cloned from the upgraded prima"
+    ],
+    [
+      37.95,
+      "Proof."
+    ],
+    [
+      48.75,
+      "PG 18 now preserves optimizer stats - but NOT extended stati"
+    ],
+    [
+      55.96,
+      "And every base backup in the bucket is still PG 17 - it cann"
+    ]
+  ],
+  "demo5": [
+    [
+      4.55,
+      "05-replica-cluster.yaml on screen"
+    ],
+    [
+      8.58,
+      "Continuous restore mode: bootstrap from the ObjectStore, the"
+    ],
+    [
+      20.38,
+      "Read-only on the replica: the harbor data is all here."
+    ],
+    [
+      27.98,
+      "Promote = flip replica.enabled to false. One field."
+    ],
+    [
+      31.83,
+      "05b-promote.yaml on screen"
+    ],
+    [
+      52.01,
+      "It is a primary now, so it takes writes. A standby would ref"
+    ]
+  ]
+}

@@ -37,16 +37,19 @@ layout: default
 
 **"Hands on" CTO, Paladyn** · venture builder (Woonzorgweb, ~150k users/month)
 
-**Independent Platform Engineer**, Vantralis
-<br />
-<br />
-Kubernetes, GitOps & CloudNativePG in ISO 27001-certified environments
+**Independent Platform Engineer** · Vantralis
+
+**eucloudcost.com** · Personal Project, Comparison of Eu Cloud Providers, open Data Source
+
+**Daily Work**
+
+Backend Development, Kubernetes, GitOps & CloudNativePG in ISO 27001-certified environments
 <br />
 <br />
 
 <div class="sub" style="margin-top:.9rem">
 
-**100+ CNPG databases** · bucket + user + backup schedule generated per DB CR
+**100+ CNPG databases** 
 
 </div>
 
@@ -56,9 +59,12 @@ Kubernetes, GitOps & CloudNativePG in ISO 27001-certified environments
 layout: default
 ---
 
-# CloudNativePG, August 2026
+# CloudNativePG (CNPG)
 
-<div class="sub">What is current, and what is already end of life.</div>
+<div class="sub">A Kubernetes operator that runs PostgreSQL. Not a distributed database.</div>
+
+<div class="metric"><b>What it is:</b> a controller that owns Pods, PVCs and Services directly, No StatefulSet, no Patroni, no external DCS. CNCF Incubating.</div>
+<div class="metric"><b>What it is not:</b> <strong>one primary, N read-only replicas.</strong> No multi-master, no active-active, no writes at two sites. </div>
 
 <div class="nohead">
 
@@ -82,13 +88,15 @@ layout: default
 
 # The Operator Is the Easy Part
 
-<div class="sub">One CR gets you a cluster. Everything that hurts afterwards lives underneath it.</div>
+<div class="sub">One CR gets you a cluster. Everything after you somehow need to measure.</div>
 
-<div class="metric"><b>Storage</b> — the IOPS you did not choose, and the WAL volume you did not separate</div>
-<div class="metric"><b>Object store</b> — it decides how long recovery takes, not Postgres</div>
-<div class="metric"><b>Topology</b> — where instances land, and which of them can become primary</div>
+<div class="metric"><b>Storage:</b> IOPS is critical for DB Operations, 
+<p>a 1 TB IOT Data DB with 5000 R/W operations per seconds, operate differently with 500 vs 5.000 vs 50.000 IOPS</p> <p>a Sonarqube DB with 10 Users in your Cluster is maybe fine with 1.000 IOPS</p></div>
+<div class="metric"><b>Object store:</b> If your object Store is attached with 100 MB/s to your Datacenter: 
+<p>can lead to Restore times of Hours</p></div>
+<div class="metric"><b>Topology:</b> How you want to build it, what is your Scenario, Edge Clusters, Pilot Light, Warm Standby ?</div>
 
-> Every demo after this is one of those three, breaking.
+> We will look into Demos to see if there are good Options.
 
 ---
 class: paladyn-dark divider
@@ -98,8 +106,6 @@ layout: default
 # Let's deploy
 
 ## One Cluster CR, three instances
-
-Apply &middot; the operator elects a primary &middot; connect through PgBouncer
 
 ---
 layout: default
@@ -112,15 +118,6 @@ class: cast-slide
 
 ---
 layout: default
-class: arch-slide
----
-
-# The Whole Architecture
-
-<img src="assets/cnpg-architecture.png" alt="CloudNativePG architecture: the Kubernetes API server as the only source of truth; namespaced Cluster and ObjectStore resources; controller-manager and the barman-cloud plugin in cnpg-system talking over CNPG-I gRPC, the plugin injecting the sidecar but never driving it; an app reaching cluster-rw and cluster-ro through a PgBouncer Pooler; three instance pods each running postgres and a barman-cloud sidecar with an operator-owned PVC; and WAL archiving from the primary to an object store" />
-
----
-layout: default
 ---
 
 # Day 0 Decides Your Day 2
@@ -129,18 +126,27 @@ layout: default
 
 | Volume | Published performance |
 |---|---|
-| **OVH** Classic / Regional Classic | guaranteed **500 IOPS**, 64 MB/s |
 | **OVH** High Speed Gen2 | **30 IOPS/GB** → max 20,000 · 0.5 MB/s/GB → max 320 MB/s |
 | **Scaleway** Block Storage | up to **15,000 IOPS**, "subject to fluctuation during peak load" |
 | **Hetzner** Cloud Volumes | **not published**. "fast (SSD based)" |
 | **AWS** gp3 | 3,000 IOPS + 125 MiB/s baseline, **no bursting** |
 | **AWS** gp2 | **3 IOPS/GiB** → 100 GiB = 300 IOPS, bursts, then **5 h** to refill credits |
+| **Netways** performance-optimized-2 | base **5000 IOPS**, burst 10000 |
+| **StackIt**  |  **up to 60000** |
+| **OnPrem**  |  **only you know** |
 
-**IOPS is often a function of volume size**: OVH Gen2 30/GB, gp2 3/GiB. A small volume is a slow
-database, and it benchmarks fine until the burst credits run out.
+**IOPS is often a function of volume size**: check how your volume Size correlates with your IOPS
 
-<span class="ok"></span>Separate `walStorage` · `allowVolumeExpansion` · `WaitForFirstConsumer` &nbsp;
-<span class="no"></span>Burstable volumes for a database you must give an RTO for
+<span class="ok"></span> `allowVolumeExpansion` 
+
+---
+layout: default
+class: arch-slide
+---
+
+# The Whole Architecture
+
+<img src="/assets/cnpg-architecture.png" alt="CloudNativePG architecture: the Kubernetes API server as the only source of truth; namespaced Cluster and ObjectStore resources; controller-manager and the barman-cloud plugin in cnpg-system talking over CNPG-I gRPC, the plugin injecting the sidecar but never driving it; an app reaching cluster-rw and cluster-ro through a PgBouncer Pooler; three instance pods each running postgres and a barman-cloud sidecar with an operator-owned PVC; and WAL archiving from the primary to an object store" />
 
 ---
 class: paladyn-dark divider
@@ -167,11 +173,56 @@ layout: default
 class: arch-slide
 ---
 
-# How Backups Actually Work
+# Retention Is Not Your Recovery Window
 
-<img src="assets/cnpg-backups.png" alt="Backup and restore paths: a running instance pod archiving WAL to the object store through the barman-cloud sidecar over CNPG-I gRPC; a new Cluster where an injected init container restores the base backup before postgres starts and restore_command then fetches only WAL segments; and the control plane chain from Backup and ScheduledBackup through the operator and the plugin to a namespaced ObjectStore" />
+<div class="sub">Retention deletes <strong>backups</strong>, not time. The oldest <em>surviving</em> base backup sets your real PoR.</div>
 
-<div class="sub" style="margin-top:.35rem">Why a sidecar and not the operator: <strong>IRSA per cluster · blast radius · version skew</strong></div>
+<img src="/assets/cnpg-pitr-simple.png" alt="A timeline ending at now: a backup at minus twelve days crossed out as deleted by a seven day retention policy; the first valid backup at minus nine days; further backups at minus six and minus three days; a dashed line at the point of recoverability, now minus seven days; and a bar underneath showing that the actual recovery window is nine days, not seven" />
+
+<div class="sub" style="margin-top:.35rem">Retention <strong>7d</strong> + backups every <strong>3d</strong> ⇒ real window <strong>9d</strong>. Change the schedule, you change the window.</div>
+
+---
+class: paladyn-dark divider
+layout: default
+---
+
+# Let's break it
+
+## On purpose.
+
+---
+layout: default
+class: cast-slide
+---
+
+# Demo 3: Point-in-Time Recovery
+
+<Cast name="demo3" />
+
+---
+layout: default
+---
+
+# PITR: how to recover
+
+<div class="sub">There is no in-place recovery. Recovery is <strong>always</strong> a new cluster.</div>
+
+```yaml
+bootstrap:
+  recovery:
+    source: hafen-source
+    recoveryTarget:
+      targetTime: "2026-09-03 10:42:17+00"
+```
+
+| Target | Use when |
+|---|---|
+| `targetTime` | you know roughly when it happened |
+| `targetLSN` | you know exactly where in the WAL |
+| `targetXID` | you have the offending transaction id |
+| `targetName` | you called `pg_create_restore_point()` **before** the risky change |
+
+> **Restore time = fetch base backup + replay WAL since that backup.**
 
 ---
 layout: default
@@ -197,81 +248,13 @@ can be tweaked: `ObjectStore`, `data.jobs` and `wal.maxParallel`.
 > **Measure this:** The whole Recovery procedures require this
 
 ---
-layout: default
----
-
-# A Major Upgrade Does Three Things
-
-<div class="sub">Only the first is fast, and the first is the only one anybody quotes</div>
-
-| Step | Scales with | On a toy DB | On 1 TB |
-|---|---|---|---|
-| `pg_upgrade --link` | table count (hard links) | seconds | seconds–minutes |
-| **statistics transfer** *(new in 18)* | table + column count | seconds | **can triple the whole job** |
-| **replica rebuilds** via `pg_basebackup` ×N | data size ÷ min(net, disk) | seconds | see the previous slide |
-
-A replica is re-cloned **from the primary, not the bucket**, so it costs read IOPS on a
-production database, write IOPS on a fresh volume, and **HA is degraded for the entire copy.**
-
-> **PG 18 preserves optimizer statistics**. A real win, and it is not free at upgrade time.
-> `--no-statistics` opts out if you would rather pay it afterwards.
-
----
-class: paladyn-dark divider
-layout: default
----
-
-# 🚢 Let's break it
-
-## At ContainerDays. On purpose.
-
-One UPDATE without a WHERE &middot; recover &middot; then repair production
-
----
-layout: default
-class: cast-slide
----
-
-# Demo 3: Point-in-Time Recovery
-
-<Cast name="demo3" />
-
----
-layout: default
----
-
-# PITR: the part people get wrong
-
-<div class="sub">There is no in-place undo. Recovery is <strong>always</strong> a new cluster, then a reconcile.</div>
-
-```yaml
-bootstrap:
-  recovery:
-    source: hafen-source
-    recoveryTarget:
-      targetTime: "2026-09-03 10:42:17+00"
-```
-
-| Target | Use when |
-|---|---|
-| `targetTime` | you know roughly when it happened |
-| `targetLSN` | you know exactly where in the WAL |
-| `targetXID` | you have the offending transaction id |
-| `targetName` | you called `pg_create_restore_point()` **before** the risky change |
-
-> **Restore time = fetch base backup + replay WAL since that backup.**
-> The second term grows with time-since-backup, so backup frequency is an **RTO** decision.
-
----
 class: paladyn-dark divider
 layout: default
 ---
 
 # Let's upgrade it
 
-## Postgres 17 to 18, in place, one field
-
-One field &middot; <code>pg_upgrade --link</code> &middot; replicas re-cloned &middot; then the statistics
+## Postgres 17 to 18 in place
 
 ---
 layout: default
@@ -283,22 +266,56 @@ class: cast-slide
 <Cast name="demo4" />
 
 ---
+layout: default
+---
+
+# A Major Upgrade will lead to replicas being recreated based on the primary
+
+| Database | Writes fail | No HA <span class="sub">3 inst</span> | No HA <span class="sub">5 inst</span> | 
+|---|---:|---:|---:|
+| 10 GB | 5 min | 9 min | 12 min | 
+| 100 GB | 5 min | 39 min | 1.2 h |
+| 500 GB | 5 min | 2.9 h | 5.8 h | 
+| 1 TB | 5 min | 5.8 h | 11.4 h | 
+
+<div class="sub" style="padding-top:1rem">100 MB/s volume · 500 tables × 12 columns</div>
+
+> Always Backup before a Major migration
+
+<span class="ok"></span>**`pg_upgrade --link`** hard-links, this scales with your **schema**, not your bytes. Thatswhy R/W downtime is static
+
+<span class="no"></span>**Replica rebuilds** are `pg_basebackup` from the **primary**, one at a time. `-ro` has no endpoints until they finish.
+
+> **Same OS distribution, always.** `17.6-bookworm` → `18.6-trixie` is rejected: different glibc, different collation order, indexes sorted by rules that no longer apply.
+
+---
 class: paladyn-dark divider
 layout: default
 ---
 
-# Let's fail over
+# Let's build a second site
 
-## A replica cluster, and one field
+## A replica cluster, on the Edge
 
-Restore from the same bucket, forever &middot; read only &middot; then promote
+---
+layout: default
+class: arch-slide
+---
+
+# Why the Edge Site Is a Second Cluster
+
+<div class="sub">You cannot pin a primary. So you draw a cluster boundary instead.</div>
+
+<img src="/assets/cnpg-two-cluster.svg" alt="Two Kubernetes clusters connected only by an object store: hamburg runs namespace hafen with a primary and two streaming replicas archiving WAL; falkenstein runs namespace hafen-dr with two read-only instances replaying that WAL" />
+
+<div class="sub" style="margin-top:.35rem">One pod template per cluster &middot; <code>spec.affinity</code> is cluster-wide &middot; membership <strong>is</strong> eligibility</div>
 
 ---
 layout: default
 class: cast-slide
 ---
 
-# Demo 5: Replica Cluster for DR
+# Demo 5: Replica Cluster 
 
 <Cast name="demo5" />
 
@@ -306,89 +323,16 @@ class: cast-slide
 layout: default
 ---
 
-# Where Do Instances Actually Land?
+# Gotchas
+<div class="take"><i></i><b>Measure S3, Volumes,... everything!!</b></div>
+<div class="take"><i></i><b>Do DR Drills with your biggest DBs</b></div>
 
-<div class="sub">Spreading is a <em>hint</em>, not a guarantee</div>
+<div class="take"><i></i><b>A major upgrade needs a backup on <i>both</i> sides</b><span>A <i>failed</i> upgrade you revert with <code>imageName</code>. A <i>successful</i> one already replaced the old directories - and a PG 17 backup cannot bootstrap PG 18.</span></div>
+<div class="take"><i></i><b>Recovery is always a new cluster</b><span>There is no in-place undo. Practise it.</span></div>
 
-```yaml
-spec:
-  affinity:
-    enablePodAntiAffinity: true          # default
-    podAntiAffinityType: preferred       # default  ← a hint
-    topologyKey: kubernetes.io/hostname  # default
-```
+<div class="take"><i></i><b>Recovery Window is wider then you think</b><span>Object Store CR Retention + Scheduleded Backup Interval is your Recovery window</span></div>
 
-**5 instances, 3 worker nodes. What actually happened:**
-
-```
-hafen-2   hafen-worker3     hafen-4   hafen-worker
-hafen-3   hafen-worker      hafen-5   hafen-worker3   ← doubled up
-```
-
-- <span class="no"></span>`podAntiAffinityType: required` → pods **Pending forever** when instances > nodes
-- <span class="ok"></span>`spec.topologySpreadConstraints`, top level, expresses `maxSkew`, which anti-affinity cannot
-
----
-layout: default
----
-
-# "Can I keep the primary off my edge node?"
-
-<div class="sub">No. And the reason is worth understanding.</div>
-
-<div class="metric">
-
-## Primary is a **role**, not an identity
-
-It moves on failover. Anything on that node is promotable **by definition**.
-
-</div>
-
-One pod template for every instance, so `spec.affinity` is **cluster-wide**. No per-instance
-placement, no pinning. **So an edge/DR site is a second `Cluster`, not instance #4:**
-
-```yaml
-spec:
-  replica: { enabled: true, source: hafen-source }   # read-only, WAL replay
-  affinity:
-    nodeSelector: { node-role.kubernetes.io/edge: "" }
-    tolerations: [{ key: edge, operator: Exists, effect: NoSchedule }]
-```
-
-> **`syncReplicaElectionConstraint` does not solve this**: it governs *sync replica election* only; an excluded replica can still be promoted.
-
----
-layout: default
----
-
-# Six Gotchas, Found the Hard Way
-
-<div class="nohead">
-
-| | |
-|---|---|
-| **Sidecar is an *init* container** | Pods show `2/2`, but it lives under `.spec.initContainers` |
-| **Upgrade Job is `<primary>-major-upgrade`** | Not `<cluster>-…`, and **deleted seconds after success** |
-| **DR needs a *post*-upgrade base backup** | A PG 17 base backup cannot bootstrap PG 18 |
-| **`--link` has no rollback** | The old data directory is gone. Your escape is the *pre*-upgrade backup |
-| **`retentionPolicy` lives on `ObjectStore`** | On `ScheduledBackup` it is a strict decoding error |
-| **The operator owns `postgresql.conf`** | `spec.postgresql.parameters` is rendered into it. 1.30 validates the keys, because they used to inject arbitrary directives |
-
-</div>
-
----
-layout: default
----
-
-# Takeaways
-
-<div class="take"><i></i><b>Your object store is the variable</b><span>Not Postgres. Measure against the bucket you will actually restore from.</span></div>
-<div class="take"><i></i><b>Backup frequency is an RTO decision</b><span>Restore = fetch backup + replay WAL. Only the second term is yours.</span></div>
-<div class="take"><i></i><b>Recovery is always a new cluster</b><span>There is no in-place undo. Practise it. Use named restore points.</span></div>
-<div class="take"><i></i><b>Storage is chosen on day 1, paid for on day 2</b><span>IOPS follow volume size. Separate the WAL volume. And demo values are demo values.</span></div>
-<div class="take"><i></i><b>Topology is a Cluster boundary</b><span>Not an affinity rule. Primary is a role, and it moves.</span></div>
-<div class="take"><i></i><b>The sidecar model is the future</b><span>In-tree Barman dies in 1.31. Migrate before it is urgent.</span></div>
-<div class="take"><i></i><b>Day 2 starts on day 1</b><span>One CR gets you a cluster. Everything else is the runbook.</span></div>
+<div class="take"><i></i><b>Day 2 starts on day 0</b><span>One CR gets you a cluster. and it seems Easy, but its actually a bit OPS heavy</span></div>
 
 ---
 layout: default
@@ -404,31 +348,16 @@ layout: default
 
 &nbsp;
 
-**Everything in this talk, reproducible from zero:**
+<div class="repo-qr">
+  <div class="repo-qr-text">
 
-[github.com/mraeck/containerdays-2026-cnpg](https://github.com/mraeck/containerdays-2026-cnpg)
+## Slides, and Demos:
 
-<div class="sub">One script builds the kind cluster, the operator, the plugin, the object store and Grafana. The demo drivers re-record every clip you just watched.</div>
+[github.com/mixxor/containerdays-2026-cnpg](https://github.com/mixxor/containerdays-2026-cnpg)
 
----
-layout: default
----
-
-# Resources
-
-- [cloudnative-pg.io/docs](https://cloudnative-pg.io/docs) · [github.com/cloudnative-pg/cloudnative-pg](https://github.com/cloudnative-pg/cloudnative-pg)
-- Barman Cloud plugin (CNPG-I): [github.com/cloudnative-pg/plugin-barman-cloud](https://github.com/cloudnative-pg/plugin-barman-cloud)
-- **`ObjectStore` reference**, every field on the CR: [cloudnative-pg.io/plugin-barman-cloud/docs/object_stores](https://cloudnative-pg.io/plugin-barman-cloud/docs/object_stores/)
-- **Grafana dashboard ID 20417**
-- `kubectl krew install cnpg`
-
-&nbsp;
-
-**Everything in this talk, reproducible from zero:**
-
-[github.com/mixxor/containerdays-2026-cnpg](https://github.com/mraeck/containerdays-2026-cnpg)
-
-<div class="sub">One script builds the kind cluster, the operator, the plugin, the object store and Grafana. The demo drivers re-record every clip you just watched.</div>
+  </div>
+  <img src="/assets/qrcode.png" alt="QR code linking to github.com/mixxor/containerdays-2026-cnpg, the repository with every manifest, script and demo driver from this talk" />
+</div>
 
 ---
 class: paladyn-dark divider
@@ -436,6 +365,42 @@ layout: default
 ---
 
 # BACKUP
+
+---
+layout: default
+class: arch-slide
+---
+
+# How Backups Actually Work
+
+<img src="/assets/cnpg-backups.png" alt="Backup and restore paths: a running instance pod archiving WAL to the object store through the barman-cloud sidecar over CNPG-I gRPC; a new Cluster where an injected init container restores the base backup before postgres starts and restore_command then fetches only WAL segments; and the control plane chain from Backup and ScheduledBackup through the operator and the plugin to a namespaced ObjectStore" />
+
+<div class="sub" style="margin-top:.35rem">Why a sidecar and not the operator: <strong>IRSA per cluster · blast radius · version skew</strong></div>
+
+---
+layout: default
+class: edge-table
+---
+
+# What You Actually Get at the Edge
+
+<div class="sub">Local reads. Not local writes. And two different tools with the same field name.</div>
+
+| | Streaming replica <span class="sub">same cluster</span> | **Standalone** replica cluster | **Distributed** topology |
+|---|---|---|---|
+| Lag | milliseconds | `archive_timeout`, 5 min default | same, or streaming |
+| Reads | yes, `-ro` Service | yes | yes |
+| Writes | no | no | no |
+| Promotion | automatic, on failover | one field, **irreversible** | demotion → promotion token |
+| Old primary after | rejoins via `pg_rewind` | **must be re-cloned** | becomes a replica |
+| Docs say it's for | — | **read-only workloads** | **DR and HA** |
+
+<span class="no"></span>**A replica cluster never accepts a write.** `CREATE TABLE` fails with *cannot execute in a read-only transaction*, exactly as on any standby.
+<span class="ok"></span>**Want ~1 min RPO?** Set `archive_timeout: 60s` and pay in forced segment switches.
+<span class="ok"></span>**Want protection from demo 3?** `replica.minApplyDelay: 8h` — a replica that intentionally lags, so you can catch the missing `WHERE` before it lands.
+
+> Chain: segment fills **or** `archive_timeout` fires → upload → the standby's `restore_command` asks → replay.
+> The first term dominates. Everything else is seconds.
 
 ---
 layout: default
@@ -482,6 +447,34 @@ spec:
       number: 1
       failoverQuorum: true   # stable since 1.28
 ```
+
+---
+layout: default
+---
+
+# Where Do Instances Actually Land?
+
+<div class="sub">Spreading is a <em>hint</em>, not a guarantee</div>
+
+```yaml
+spec:
+  affinity:
+    enablePodAntiAffinity: true          # default
+    podAntiAffinityType: preferred       # default  ← a hint
+    topologyKey: kubernetes.io/hostname  # default
+```
+
+**5 instances, 3 worker nodes. What actually happened:**
+
+```
+hafen-2   hafen-worker3     hafen-4   hafen-worker
+hafen-3   hafen-worker      hafen-5   hafen-worker3   ← doubled up
+```
+
+- <span class="no"></span>`podAntiAffinityType: required` → pods **Pending forever** when instances > nodes
+- <span class="ok"></span>`spec.topologySpreadConstraints`, top level, expresses `maxSkew`, which anti-affinity cannot
+
+> **`syncReplicaElectionConstraint` does not solve this**: it governs *sync replica election* only; an excluded replica can still be promoted.
 
 ---
 layout: default

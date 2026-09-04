@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Demo 3 — PITR: an UPDATE with no WHERE, restore to just before it
+# Demo 3 — PITR: an UPDATE with no WHERE, restore to just before it (the missing
+# WHERE must NOT be given away by the on-screen comment; the check reveals it)
 source "$(dirname "$0")/_lib.sh"
 
 # The intact table, the mistake, and the damage are three separate steps so the
@@ -18,7 +19,7 @@ say '# Capture a pre-disaster timestamp T0.'
 run 'T0=$(kubectl -n hafen exec $PRIMARY -c postgres -- psql -U postgres -Atc "SELECT now()"); echo "T0 = $T0"'
 [ -n "${T0:-}" ] || { echo "FATAL: T0 is empty, refusing to record a broken restore" >&2; exit 1; }
 
-say '# One UPDATE. The WHERE clause is missing.'
+say '# One UPDATE. Correcting a weight.'
 run 'kubectl -n hafen exec $PRIMARY -c postgres -- env PGPASSWORD=$PGPW psql -h hafen-rw -U hafenmeister hafen -c "UPDATE containers SET weight_kg = 1;"'
 
 say '# Check.'

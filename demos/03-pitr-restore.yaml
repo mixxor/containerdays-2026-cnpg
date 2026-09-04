@@ -14,7 +14,7 @@ spec:
     recovery:
       source: hafen-source
       recoveryTarget:
-        targetTime: "2026-08-30 18:51:15.574189+00"   # <- set this before applying
+        targetTime: "2026-09-01 11:56:05.029111+00"   # <- set this before applying
 
   externalClusters:
   - name: hafen-source
